@@ -10,6 +10,42 @@ import scqubits as scq
 import matplotlib.pyplot as plt
 import pickle
 from tqdm import tqdm
+import scipy.constants as ct
+
+def calcT1_capacitive(Ej, Ec, El, Qcal, Tr):
+    """
+    Function to Calculate out the T1 decay due to capacitive loss
+    :param Ej:
+    :param Ec:
+    :param El:
+    :param Qcal:
+    :param Tr:
+    :return:
+    """
+
+    # Define Constants
+    hbar = ct.hbar
+    kb = ct.k
+
+    # Defining Fluxonium
+    fluxonium = scq.Fluxonium(EJ = Ej, EC = Ec, EL = El, flux = 0.5, cutoff = 110)
+
+    # Calculating Qubit Frequency in radians
+    energies =  fluxonium.eigenvals(evals_count = 4)
+    w01 = (energies[1] - energies[0])*1e9*2*np.pi
+
+    # Calculating Capacitive Energy in J
+    Ec_q = hbar*fluxonium.EC*1e9*2*np.pi
+
+    # Calculating phi matrix element between 0 and 1
+    phimat01 = np.abs(fluxonium.matrixelement_table("phi_operator")[0,1])
+
+    # Calculating the rate of decay
+    G1_q = (( hbar * w01**2 / (4*Ec_q* Qcal) ) * (1 / np.tanh( hbar*w01 / (2*kb*Tr) )) * phimat01**2)
+    T1_q = 1/G1_q
+
+    return T1_q*1e6
+
 
 def fluxoniumSampling(Ejrange, Ecrange, Elrange, fname, **kwargs):
     """
@@ -18,6 +54,7 @@ def fluxoniumSampling(Ejrange, Ecrange, Elrange, fname, **kwargs):
     1. Qubit Frequency
     2. Qubit Anharmonicity
     3. Charge Matrix Element
+    4. T1 decay due to capacitive loss
 
     Parameters
     ----------
@@ -74,7 +111,7 @@ def fluxoniumSampling(Ejrange, Ecrange, Elrange, fname, **kwargs):
                 energy = fluxonium.eigenvals(evals_count = 3)
                 data['w01'].append(energy[1] - energy[0])
                 data['w12'].append(energy[2] - energy[1])
-                data['n01'].append(fluxonium.matrixelement_table("n_operator")[0,1])
+                data['n01'].append(np.abs(fluxonium.matrixelement_table("n_operator")[0,1]))
 
     # Save the data
     with open(fname, 'wb') as f:
@@ -82,7 +119,7 @@ def fluxoniumSampling(Ejrange, Ecrange, Elrange, fname, **kwargs):
 
     return data
 
-def bestfluxoniumSearch(conditions):
+def bestfluxoniumSearch(conditions, tempRange, fname, **kwargs):
     """
     This function is used to search the best fluxonium from the brute force parameter space search.
 
@@ -102,22 +139,44 @@ def bestfluxoniumSearch(conditions):
             Charge Matrix Element
         6. n01_max : float
             Charge Matrix Element
-
+    tempRange : np.array
+        List of temperatures to be sampled
+    **kwargs : dict
+        Dictionary of other parameters to be passed to the fluxonium class.
+        1. Qcal : float (default = 1e6)
+            The capacitive Qubit Quality Factor
     Returns
     -------
     A list of the best fluxoniums satisfying the conditions.
     """
+
+    # Handle the kwargs
+    if 'Qcal' in kwargs:
+        Qcal = kwargs['Qcal']
+    else:
+        Qcal = 5e6
+
     # Load the data
-    with open('test.pkl', 'rb') as f:
+    with open(fname, 'rb') as f:
         data = pickle.load(f)
 
     # Initialize the list of best fluxoniums
-    bestfluxoniums = []
+    validfluxoniums = []
 
     # Loop over the data
-    for i in range(len(data['Ej'])):
+    print("Searching for the fluxoniums that satisfy the conditions...")
+    for i in tqdm(range(len(data['Ej']))):
         if data['w01'][i] >= conditions['w01_min'] and data['w01'][i] <= conditions['w01_max'] and data['w12'][i] >= conditions['w12_min'] and data['w12'][i] <= conditions['w12_max'] and data['n01'][i] >= conditions['n01_min'] and data['n01'][i] <= conditions['n01_max']:
-            bestfluxoniums.append([data['Ej'][i], data['Ec'][i], data['El'][i]])
+            validfluxoniums.append([data['Ej'][i], data['Ec'][i], data['El'][i]])
+
+    print("Calculating the best fluxoniums with highest T1...")
+    # Find the fluxonium with the  higest T1 among the valid fluxoniums for each temperature
+    bestfluxoniums = []
+    for temp in tempRange:
+        T1 = []
+        for fluxonium in validfluxoniums:
+            T1.append(calcT1_capacitive(fluxonium[0], fluxonium[1], fluxonium[2], Qcal, temp))
+        bestfluxoniums.append((validfluxoniums[np.argmax(T1)], np.max(T1)))
 
     return bestfluxoniums
 

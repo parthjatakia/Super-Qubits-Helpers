@@ -1,0 +1,9 @@
+
+.idea/inspectionProfiles/profiles_settings.xml
+*.xml
+*.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/Super-Qubits-Helpers.iml
+.idea/vcs.xml
+*.pyc

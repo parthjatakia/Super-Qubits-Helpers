@@ -46,6 +46,34 @@ def calcT1_capacitive(Ej, Ec, El, Qcal, Tr):
 
     return T1_q*1e6
 
+def thermalPopulation(Ej, Ec, El, flux, T, levels = 4):
+    """
+    Function to calculate the thermal population of the fluxonium up till a level. The default is 4
+    :param Ej: float (GHz)
+    :param Ec: float (GHz)
+    :param El: float (GHz)
+    :param flux: float
+    :param T: float (K)
+    :return: np.array (length = levels)
+    """
+    # Define Constants
+    hbar = ct.hbar
+    kb = ct.k
+
+    # Defining Fluxonium
+    fluxonium = scq.Fluxonium(EJ = Ej, EC = Ec, EL = El, flux = flux, cutoff = 110)
+
+    # Calculating Population
+    cutoff = 3*levels + 10
+    energies =  fluxonium.eigenvals(evals_count = cutoff)
+    population = np.zeros(cutoff)
+    for i in tqdm(range(cutoff)):
+        population[i] = np.exp(-(hbar*energies[i]*1e9*2*np.pi)/(kb*T))
+    # Normalizing the population
+    population = population/np.sum(population)
+
+    return population[:levels]
+
 
 def fluxoniumSampling(Ejrange, Ecrange, Elrange, fname, **kwargs):
     """

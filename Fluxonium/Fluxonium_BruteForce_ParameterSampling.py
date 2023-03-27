@@ -200,7 +200,7 @@ def bestfluxoniumSearch(conditions, tempRange, fname, **kwargs):
     print("Calculating the best fluxoniums with highest T1...")
     # Find the fluxonium with the  higest T1 among the valid fluxoniums for each temperature
     bestfluxoniums = []
-    for temp in tempRange:
+    for temp in tqdm(tempRange):
         T1 = []
         for fluxonium in validfluxoniums:
             T1.append(calcT1_capacitive(fluxonium[0], fluxonium[1], fluxonium[2], Qcal, temp))

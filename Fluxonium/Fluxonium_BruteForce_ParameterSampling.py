@@ -1,7 +1,7 @@
 """
 Author : Parth Jatakia
 Date : 21 March 2023
-Description : This script is used to brute force the parameter space of the fluxoniuum to calculate different quantifiers
+Description : This script is used to brute force the parameter space of the fluxonium to calculate different quantifiers
               to help choose a high coherence fluxonium
 """
 
@@ -191,11 +191,15 @@ def bestfluxoniumSearch(conditions, tempRange, fname, **kwargs):
     # Initialize the list of best fluxoniums
     validfluxoniums = []
 
-    # Loop over the data
     print("Searching for the fluxoniums that satisfy the conditions...")
+    # Loop over the data to find the valid fluxoniums
     for i in tqdm(range(len(data['Ej']))):
         if data['w01'][i] >= conditions['w01_min'] and data['w01'][i] <= conditions['w01_max'] and data['w12'][i] >= conditions['w12_min'] and data['w12'][i] <= conditions['w12_max'] and data['n01'][i] >= conditions['n01_min'] and data['n01'][i] <= conditions['n01_max']:
-            validfluxoniums.append([data['Ej'][i], data['Ec'][i], data['El'][i]])
+            validfluxoniums.append([data['Ej'][i], data['Ec'][i], data['El'][i], data['w01'][i], data['w12'][i], data['n01'][i]])
+
+    if len(validfluxoniums) == 0:
+        print("No valid fluxoniums found. Please try again with different conditions.")
+        return
 
     print("Calculating the best fluxoniums with highest T1...")
     # Find the fluxonium with the  higest T1 among the valid fluxoniums for each temperature
